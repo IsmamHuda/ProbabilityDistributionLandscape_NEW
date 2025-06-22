@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Probability Distribution Evidence Board</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            overflow: hidden; /* Prevent scrolling if board is larger than viewport */
+        }
+        /* Custom styles for line text to ensure it's always visible */
+        .line-label {
+            pointer-events: none; /* Make text not interfere with mouse events */
+            user-select: none; /* Prevent text selection */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: 600; /* font-semibold */
+            fill: #fca5a5; /* fill-red-300 */
+        }
+        /* Fade in for the detail panel */
+        .detail-panel.open {
+            transform: translateX(0);
+        }
+        .detail-panel.closed {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+<body class="relative min-h-screen bg-gray-900 text-gray-100">
+    <!-- Evidence Board Background -->
+    <div class="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-950 opacity-90"></div>
+    <div class="absolute inset-0 bg-[url('https://placehold.co/1000x1000/0a0a0a/333333?text=.')] opacity-10 pointer-events-none" style="background-size: 20px 20px;"></div>
+
+    <!-- SVG for Connections (Red Strings) - dynamically drawn by JS -->
+    <svg id="connections-svg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
+
+    <!-- Probability Distribution Cards (Nodes) - dynamically created by JS -->
+    <div id="distribution-cards-container" class="relative z-20">
+        <!-- Cards will be injected here by JavaScript -->
+    </div>
+
+    <!-- Detail Panel -->
+    <div id="detail-panel"
+        class="detail-panel fixed top-0 right-0 h-full w-full md:w-96 bg-gray-800/95 backdrop-blur-lg
+               shadow-2xl z-40 p-6 transition-transform duration-300 ease-in-out closed border-l-2 border-red-700">
+        <div class="flex justify-between items-center mb-6">
+            <h2 id="detail-panel-title" class="text-2xl font-extrabold text-red-300">Details</h2>
+            <button id="close-detail-panel-btn"
+                    class="text-gray-400 hover:text-red-400 transition-colors p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+
+        <p id="detail-panel-description" class="text-gray-300 mb-4"></p>
+        <p id="detail-panel-details" class="text-gray-200 leading-relaxed mb-6"></p>
+
+        <h3 class="text-lg font-semibold text-red-200 mb-2">Related Distributions:</h3>
+        <ul id="detail-panel-connections" class="list-disc list-inside text-gray-300">
+            <!-- Connections will be injected here by JavaScript -->
+        </ul>
+        <p id="no-connections-message" class="text-gray-400 hidden">Click on a distribution card to see its details.</p>
+    </div>
+
+    <script>
+        // Data for distributions and connections
+        const distributions = [
+            { id: 'normal', name: 'Normal', displayName: 'Normal (μ, σ)', description: 'The bell curve', details: 'A continuous probability distribution that is symmetric about its mean, with data clustering around the mean and tapering off symmetrically away from it. Many natural phenomena are approximately normally distributed.' },
+            { id: 'standard_normal', name: 'Standard Normal', displayName: 'Standard Normal (μ=0, σ=1)', description: 'Z-distribution', details: 'A special case of the Normal distribution with a mean of 0 and a standard deviation of 1. Any normal distribution can be transformed into a standard normal distribution (Z-score).' },
+            { id: 't_dist', name: 'Student\'s t', displayName: 'Student\'s t (df)', description: 'For small samples', details: 'A probability distribution that is used when estimating the mean of a normally distributed population in situations where the sample size is small and the population standard deviation is unknown.' },
+            { id: 'chi_squared', name: 'Chi-squared', displayName: 'Chi-squared (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.' },
+            { id: 'exponential', name: 'Exponential', displayName: 'Exponential (λ)', description: 'Waiting time between events', details: 'A continuous probability distribution that describes the time between events in a Poisson point process, i.e., a process in which events occur continuously and independently at a constant average rate.' },
+            { id: 'poisson', name: 'Poisson', displayName: 'Poisson (λ)', description: 'Count of events', details: 'A discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time or space if these events occur with a known constant mean rate and independently of the time since the last event.' },
+            { id: 'binomial', name: 'Binomial', displayName: 'Binomial (n, p)', description: 'Successes in N trials', details: 'A discrete probability distribution of the number of successes in a sequence of n independent experiments, each asking a yes/no question, and each with its own Boolean-valued outcome: success (with probability p) or failure (with probability q = 1 − p).' },
+            { id: 'bernoulli', name: 'Bernoulli', displayName: 'Bernoulli (p)', description: 'Single trial', details: 'The probability distribution of a random variable which takes the value 1 with probability p and the value 0 with probability q=1-p. It models a single trial with two outcomes.' },
+            { id: 'gamma', name: 'Gamma', displayName: 'Gamma (k, θ) or (α, β)', description: 'Generalization of Exponential', details: 'A two-parameter family of continuous probability distributions. It has a skewed shape and is often used to model waiting times until multiple events occur.' },
+            { id: 'beta', name: 'Beta', displayName: 'Beta (α, β)', description: 'Probability of a probability', details: 'A family of continuous probability distributions defined on the interval [0, 1]. It is often used to model the behavior of random variables restricted to intervals of finite length, such as probabilities.' },
+            { id: 'uniform', name: 'Uniform', displayName: 'Uniform (a, b)', description: 'Equal probability over range', details: 'A probability distribution that has constant probability. For example, a uniform distribution on [a,b] assigns equal probability to all values in that interval.' }
+        ];
+
+        const connections = [
+            { from: 'normal', to: 'standard_normal', type: 'standardization', label: 'Standardization (Z-score)' },
+            { from: 't_dist', to: 'normal', type: 'limit', label: 'Limit (df → ∞)' },
+            { from: 'chi_squared', to: 'normal', type: 'derivation', label: 'Sum of Squared Normals' },
+            { from: 'exponential', to: 'poisson', type: 'relation', label: 'Waiting Time' },
+            { from: 'binomial', to: 'normal', type: 'approximation', label: 'Normal Approximation (large n)' },
+            { from: 'binomial', to: 'poisson', type: 'approximation', label: 'Poisson Approximation (rare events)' },
+            { from: 'bernoulli', to: 'binomial', type: 'relation', label: 'Single Trial' },
+            { from: 'gamma', to: 'exponential', type: 'special_case', label: 'Special Case' },
+            { from: 'beta', to: 'uniform', type: 'special_case', label: 'Special Case' },
+        ];
+
+        // Hardcoded positions for simplicity (no dragging)
+        const nodePositions = {
+            normal: { x: 300, y: 100 },
+            standard_normal: { x: 550, y: 100 },
+            t_dist: { x: 300, y: 250 },
+            chi_squared: { x: 550, y: 250 },
+            exponential: { x: 100, y: 400 },
+            poisson: { x: 300, y: 400 },
+            binomial: { x: 500, y: 400 },
+            bernoulli: { x: 700, y: 400 },
+            gamma: { x: 100, y: 550 },
+            beta: { x: 500, y: 550 },
+            uniform: { x: 700, y: 550 },
+        };
+
+        const cardsContainer = document.getElementById('distribution-cards-container');
+        const detailPanel = document.getElementById('detail-panel');
+        const closeDetailPanelBtn = document.getElementById('close-detail-panel-btn');
+        const detailPanelTitle = document.getElementById('detail-panel-title');
+        const detailPanelDescription = document.getElementById('detail-panel-description');
+        const detailPanelDetails = document.getElementById('detail-panel-details');
+        const detailPanelConnections = document.getElementById('detail-panel-connections');
+        const noConnectionsMessage = document.getElementById('no-connections-message');
+        const connectionsSvg = document.getElementById('connections-svg');
+
+        // Store references to created card elements for line drawing
+        const nodeElements = {};
+
+        // Function to create and append a distribution card
+        function createDistributionCard(dist) {
+            const card = document.createElement('div');
+            card.id = `card-${dist.id}`;
+            card.className = `
+                absolute bg-gray-700/70 backdrop-blur-sm
+                rounded-lg shadow-xl p-4 cursor-pointer
+                border-2 border-gray-600 hover:border-red-500 transition-all duration-200
+            `;
+            card.style.left = `${nodePositions[dist.id].x}px`;
+            card.style.top = `${nodePositions[dist.id].y}px`;
+            card.style.width = '200px';
+            card.style.minHeight = '100px';
+
+            // Star Icon SVG
+            const starIconSvg = `
+                <div class="absolute -top-3 -left-3 bg-red-600 rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-300" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.25l-6.18 3.25L7 14.14l-5-4.87 8.91-1.01L12 2z"/>
+                    </svg>
+                </div>
+            `;
+
+            card.innerHTML = `
+                ${starIconSvg}
+                <h3 class="text-lg font-bold text-red-300 mb-1">${dist.displayName}</h3>
+                <p class="text-sm text-gray-300">${dist.description}</p>
+            `;
+
+            card.addEventListener('click', () => openDetailPanel(dist));
+            cardsContainer.appendChild(card);
+            nodeElements[dist.id] = card; // Store reference to the actual DOM element
+        }
+
+        // Function to calculate line coordinates
+        function getLineCoordinates(fromId, toId) {
+            const fromNode = nodeElements[fromId];
+            const toNode = nodeElements[toId];
+            const svgRect = connectionsSvg.getBoundingClientRect();
+
+            if (fromNode && toNode) {
+                const fromRect = fromNode.getBoundingClientRect();
+                const toRect = toNode.getBoundingClientRect();
+
+                const startX = fromRect.left + fromRect.width / 2 - svgRect.left;
+                const startY = fromRect.top + fromRect.height / 2 - svgRect.top;
+                const endX = toRect.left + toRect.width / 2 - svgRect.left;
+                const endY = toRect.top + toRect.height / 2 - svgRect.top;
+
+                return { x1: startX, y1: startY, x2: endX, y2: endY };
+            }
+            return { x1: 0, y1: 0, x2: 0, y2: 0 };
+        }
+
+        // Function to draw connections (lines)
+        function drawConnections() {
+            connectionsSvg.innerHTML = ''; // Clear existing lines
+            connections.forEach(conn => {
+                const { x1, y1, x2, y2 } = getLineCoordinates(conn.from, conn.to);
+                if (x1 === 0 && y1 === 0 && x2 === 0 && y2 === 0) return; // Skip if nodes not found
+
+                // Draw line
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x1);
+                line.setAttribute('y1', y1);
+                line.setAttribute('x2', x2);
+                line.setAttribute('y2', y2);
+                line.setAttribute('class', 'stroke-red-500 stroke-[3px] opacity-75 transition-all duration-300 ease-out');
+                line.setAttribute('stroke-dasharray', '5,5');
+                connectionsSvg.appendChild(line);
+
+                // Add text label
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', (x1 + x2) / 2);
+                text.setAttribute('y', (y1 + y2) / 2 - 10);
+                text.setAttribute('text-anchor', 'middle');
+                text.setAttribute('class', 'line-label'); // Use custom class for styling
+                text.textContent = conn.label;
+                connectionsSvg.appendChild(text);
+            });
+        }
+
+        // Function to open the detail panel
+        function openDetailPanel(dist) {
+            detailPanelTitle.textContent = dist.displayName;
+            detailPanelDescription.textContent = dist.description;
+            detailPanelDetails.textContent = dist.details;
+
+            // Clear previous connections
+            detailPanelConnections.innerHTML = '';
+            const related = connections.filter(conn => conn.from === dist.id || conn.to === dist.id);
+
+            if (related.length > 0) {
+                noConnectionsMessage.classList.add('hidden');
+                related.forEach(conn => {
+                    const listItem = document.createElement('li');
+                    const otherDistId = conn.from === dist.id ? conn.to : conn.from;
+                    const otherDist = distributions.find(d => d.id === otherDistId);
+                    if (otherDist) {
+                        listItem.innerHTML = `
+                            ${conn.from === dist.id ? 'Connects to' : 'Connects from'}
+                            <span class="font-medium text-red-400">${otherDist.displayName}</span> via:
+                            <span class="font-medium text-red-400">${conn.label}</span>
+                        `;
+                        detailPanelConnections.appendChild(listItem);
+                    }
+                });
+            } else {
+                noConnectionsMessage.classList.remove('hidden');
+            }
+
+            detailPanel.classList.remove('closed');
+            detailPanel.classList.add('open');
+        }
+
+        // Function to close the detail panel
+        function closeDetailPanel() {
+            detailPanel.classList.remove('open');
+            detailPanel.classList.add('closed');
+        }
+
+        // Event listener for closing the detail panel
+        closeDetailPanelBtn.addEventListener('click', closeDetailPanel);
+
+        // Initialize board on window load
+        window.onload = function() {
+            // Create all cards
+            distributions.forEach(createDistributionCard);
+            // Draw connections after cards are rendered
+            drawConnections();
+        };
+
+        // Redraw connections on window resize
+        window.addEventListener('resize', drawConnections);
+    </script>
+</body>
+</html>
