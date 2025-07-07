@@ -3,261 +3,517 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Probability Distribution Evidence Board</title>
+    <title>Probability Distributions</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <!-- MathJax CDN for LaTeX rendering -->
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             margin: 0;
-            overflow: hidden; /* Prevent scrolling if board is larger than viewport */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #0f172a; /* bg-slate-900 */
+            color: #e2e8f0; /* text-slate-200 */
+            overflow: auto; /* Changed to auto to allow scrolling */
+            position: relative; /* For absolute positioning of SVG/tooltip */
         }
-        /* Custom styles for line text to ensure it's always visible */
-        .line-label {
-            pointer-events: none; /* Make text not interfere with mouse events */
-            user-select: none; /* Prevent text selection */
-            font-size: 0.75rem; /* text-xs */
-            font-weight: 600; /* font-semibold */
-            fill: #fca5a5; /* fill-red-300 */
+
+        .card-container {
+            position: relative; /* To contain absolutely positioned cards */
+            /* Will set min-width/height dynamically in JS based on card positions */
         }
-        /* Fade in for the detail panel */
-        .detail-panel.open {
-            transform: translateX(0);
+
+        .card {
+            background-color: #334155; /* slate-700 */
+            border: 2px solid #64748b; /* slate-500 */
+            border-radius: 0.5rem;
+            padding: 1rem;
+            width: 180px;
+            height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start; /* Align content to start (left) */
+            text-align: left; /* Ensure text is left-aligned */
+            position: absolute;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 20; /* Above SVG lines */
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out; /* Smooth hover effect */
         }
-        .detail-panel.closed {
-            transform: translateX(100%);
+
+        .card:hover {
+            transform: translateY(-5px); /* Lift card on hover */
+        }
+
+        .card h3 {
+            color: #fca5a5; /* Changed heading color */
+            font-size: 1.5rem; /* Increased font size for card headings */
+            margin-bottom: 0.5rem; /* Add some spacing below the heading */
+            width: 100%; /* Ensure it takes full width for left align */
+        }
+
+        .card p {
+            font-size: 0.875rem; /* text-sm */
+            width: 100%; /* Ensure it takes full width for left align */
+        }
+
+        /* SVG styles */
+        svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            /* Will set width/height dynamically in JS based on card positions */
+            z-index: 10; /* Below cards */
+        }
+
+        .connection-line-visible {
+            stroke: #ef4444; /* red-500 */
+            stroke-width: 3px;
+            opacity: 0.8;
+            stroke-dasharray: 5,5;
+            transition: stroke-width 0.2s ease-in-out, opacity 0.2s ease-in-out;
+            pointer-events: none; /* Make the visible line non-interactive */
+        }
+
+        /* Invisible hit area line for interactions */
+        .connection-line-hitarea {
+            stroke: transparent; /* Invisible stroke */
+            stroke-width: 25px; /* Much thicker for easier hovering */
+            opacity: 0; /* Ensures it's fully invisible */
+            cursor: pointer; /* Show pointer when hovering over hit area */
+        }
+
+        /* Hover effect on the hit area will subtly affect the visible line */
+        .connection-group:hover .connection-line-visible {
+            stroke-width: 4px;
+            opacity: 1;
+        }
+
+        /* Tooltip styles */
+        #test-tooltip {
+            position: absolute;
+            background-color: rgba(31, 41, 55, 0.95); /* gray-800 with opacity */
+            color: #fca5a5; /* red-300 */
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #dc2626; /* red-600 */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none; /* Allows mouse events to pass through */
+            display: none; /* Initially hidden */
+        }
+
+        #test-tooltip.active {
+            display: block; /* Show when active */
+        }
+
+        /* Side panel styles */
+        #side-panel {
+            position: fixed;
+            top: 0;
+            right: -300px; /* Initially off-screen to the right */
+            width: 300px;
+            height: 100%;
+            background-color: #1e293b; /* slate-800 */
+            border-left: 2px solid #64748b; /* slate-500 */
+            box-shadow: -4px 0 10px rgba(0, 0, 0, 0.2);
+            transition: right 0.3s ease-in-out; /* Smooth slide animation */
+            z-index: 100; /* Above everything else except tooltip */
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #side-panel.open {
+            right: 0; /* Slide into view */
+        }
+
+        .close-button {
+            align-self: flex-end;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #e2e8f0;
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s;
+        }
+
+        .close-button:hover {
+            background-color: #334155; /* slate-700 */
+        }
+
+        /* Style for the static text above the arrow */
+        .arrow-text {
+            fill: #e2e8f0; /* text-slate-200 */
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-anchor: middle; /* Center the text horizontally */
+            pointer-events: none; /* Ensure it doesn't block mouse events */
+        }
+
+        /* Side panel heading color */
+        #panel-title {
+            color: #fca5a5; /* Changed side panel heading color */
         }
     </style>
 </head>
-<body class="relative min-h-screen bg-gray-900 text-gray-100">
-    <!-- Evidence Board Background -->
-    <div class="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-950 opacity-90"></div>
-    <div class="absolute inset-0 bg-[url('https://placehold.co/1000x1000/0a0a0a/333333?text=.')] opacity-10 pointer-events-none" style="background-size: 20px 20px;"></div>
+<body>
 
-    <!-- SVG for Connections (Red Strings) - dynamically drawn by JS -->
-    <svg id="connections-svg" class="absolute inset-0 w-full h-full pointer-events-none z-10"></svg>
-
-    <!-- Probability Distribution Cards (Nodes) - dynamically created by JS -->
-    <div id="distribution-cards-container" class="relative z-20">
-        <!-- Cards will be injected here by JavaScript -->
+    <div id="card-container">
+        <!-- Cards will be dynamically generated here by JavaScript -->
     </div>
 
-    <!-- Detail Panel -->
-    <div id="detail-panel"
-        class="detail-panel fixed top-0 right-0 h-full w-full md:w-96 bg-gray-800/95 backdrop-blur-lg
-               shadow-2xl z-40 p-6 transition-transform duration-300 ease-in-out closed border-l-2 border-red-700">
-        <div class="flex justify-between items-center mb-6">
-            <h2 id="detail-panel-title" class="text-2xl font-extrabold text-red-300">Details</h2>
-            <button id="close-detail-panel-btn"
-                    class="text-gray-400 hover:text-red-400 transition-colors p-2 rounded-full focus:outline-none focus:ring-2 focus:ring-red-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+    <svg id="connections-svg">
+        <defs>
+            <!-- Marker for the end of the line -->
+            <marker id="arrowhead-end" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#ef4444" /> <!-- Red-500 -->
+            </marker>
+        </defs>
+        <!-- Connection groups and text will be dynamically generated here -->
+    </svg>
+
+    <!-- The tooltip will render LaTeX here -->
+    <div id="test-tooltip"></div>
+
+    <!-- Side Panel -->
+    <div id="side-panel" class="flex flex-col p-6 text-slate-200">
+        <button id="close-panel-button" class="close-button">&times;</button>
+        <h2 id="panel-title" class="text-2xl font-bold mb-4">Panel Title</h2>
+        <div id="panel-content" class="flex-grow">
+            <p>This is the content for the side panel.</p>
+            <p>Click on a card to see specific details here.</p>
+            <p>You can add more elements like forms, charts, or detailed information.</p>
         </div>
-
-        <p id="detail-panel-description" class="text-gray-300 mb-4"></p>
-        <p id="detail-panel-details" class="text-gray-200 leading-relaxed mb-6"></p>
-
-        <h3 class="text-lg font-semibold text-red-200 mb-2">Related Distributions:</h3>
-        <ul id="detail-panel-connections" class="list-disc list-inside text-gray-300">
-            <!-- Connections will be injected here by JavaScript -->
-        </ul>
-        <p id="no-connections-message" class="text-gray-400 hidden">Click on a distribution card to see its details.</p>
     </div>
 
     <script>
-        // Data for distributions and connections
+        const cardContainer = document.getElementById('card-container');
+        const connectionsSvg = document.getElementById('connections-svg');
+        const testTooltip = document.getElementById('test-tooltip');
+        const sidePanel = document.getElementById('side-panel');
+        const closePanelButton = document.getElementById('close-panel-button');
+        const panelTitle = document.getElementById('panel-title');
+        const panelContent = document.getElementById('panel-content');
+
         const distributions = [
-            { id: 'normal', name: 'Normal', displayName: 'Normal (μ, σ)', description: 'The bell curve', details: 'A continuous probability distribution that is symmetric about its mean, with data clustering around the mean and tapering off symmetrically away from it. Many natural phenomena are approximately normally distributed.' },
-            { id: 'standard_normal', name: 'Standard Normal', displayName: 'Standard Normal (μ=0, σ=1)', description: 'Z-distribution', details: 'A special case of the Normal distribution with a mean of 0 and a standard deviation of 1. Any normal distribution can be transformed into a standard normal distribution (Z-score).' },
-            { id: 't_dist', name: 'Student\'s t', displayName: 'Student\'s t (df)', description: 'For small samples', details: 'A probability distribution that is used when estimating the mean of a normally distributed population in situations where the sample size is small and the population standard deviation is unknown.' },
-            { id: 'chi_squared', name: 'Chi-squared', displayName: 'Chi-squared (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.' },
-            { id: 'exponential', name: 'Exponential', displayName: 'Exponential (λ)', description: 'Waiting time between events', details: 'A continuous probability distribution that describes the time between events in a Poisson point process, i.e., a process in which events occur continuously and independently at a constant average rate.' },
-            { id: 'poisson', name: 'Poisson', displayName: 'Poisson (λ)', description: 'Count of events', details: 'A discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time or space if these events occur with a known constant mean rate and independently of the time since the last event.' },
+            // Row 1: Bernoulli, Binomial, Geometric, Negative Binomial
+            { id: 'bernoulli', name: 'Bernoulli', displayName: 'Bernoulli (p)', description: 'Single trial, binary outcome', details: 'The probability distribution of a random variable which takes the value 1 with probability p and the value 0 with probability q=1-p. It models a single trial with two outcomes.' },
             { id: 'binomial', name: 'Binomial', displayName: 'Binomial (n, p)', description: 'Successes in N trials', details: 'A discrete probability distribution of the number of successes in a sequence of n independent experiments, each asking a yes/no question, and each with its own Boolean-valued outcome: success (with probability p) or failure (with probability q = 1 − p).' },
-            { id: 'bernoulli', name: 'Bernoulli', displayName: 'Bernoulli (p)', description: 'Single trial', details: 'The probability distribution of a random variable which takes the value 1 with probability p and the value 0 with probability q=1-p. It models a single trial with two outcomes.' },
+            { id: 'poisson', name: 'Poisson', displayName: 'Poisson (λ)', description: 'Count of events', details: 'A discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time or space if these events occur with a known constant mean rate and independently of the time since the last event.' },
+            { id: 'hypergeometric', name: 'Hypergeometric', displayName: 'Hypergeometric (N, K, n)', description: 'Sampling without replacement', details: 'A discrete probability distribution that describes the probability of drawing a certain number of successes in a fixed number of draws, without replacement, from a finite population with a known number of successes.' },
+
+            // Row 2: Hypergeometric, Poisson, Exponential, Gamma
+            { id: 'geometric', name: 'Geometric', displayName: 'Geometric (p)', description: 'Trials to first success', details: 'The probability distribution of the number of Bernoulli trials needed to get one success, supported on the set {1, 2, 3, ...}.' },
+            { id: 'normal', name: 'Normal', displayName: 'Normal (μ, σ)', description: 'The bell curve', details: 'A continuous probability distribution that is symmetric about its mean, with data clustering around the mean and tapering off symmetrically away from it. Many natural phenomena are approximately normally distributed.' },
+            { id: 'erlang', name: 'Erlang', displayName: 'Erlang (k, λ)', description: 'Waiting time for kth event', details: 'The time until the kth event. Also equivalent to the sum of k iid exponentials, owing to the memoryless property of the exponential distribution' },
+            { id: 'exponential', name: 'Exponential', displayName: 'Exponential (λ)', description: 'Waiting time between events', details: 'A continuous probability distribution that describes the time between events in a Poisson point process, i.e., a process in which events occur continuously and independently at a constant average rate.' },
             { id: 'gamma', name: 'Gamma', displayName: 'Gamma (k, θ) or (α, β)', description: 'Generalization of Exponential', details: 'A two-parameter family of continuous probability distributions. It has a skewed shape and is often used to model waiting times until multiple events occur.' },
+            
+            // Row 3: Chi-squared, Normal, Log Normal, Beta
+            { id: 'chi_squared', name: 'Chi-squared', displayName: 'Chi-squared (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.' },
+            { id: 'lognormal', name: 'Log Normal', displayName: 'Log Normal (μ, σ)', description: 'Logarithm is normally distributed', details: 'A continuous probability distribution of a random variable whose logarithm is normally distributed. Used to model phenomena such as income distribution, asset prices, and biological measurements where effects are multiplicative rather than additive.' },
             { id: 'beta', name: 'Beta', displayName: 'Beta (α, β)', description: 'Probability of a probability', details: 'A family of continuous probability distributions defined on the interval [0, 1]. It is often used to model the behavior of random variables restricted to intervals of finite length, such as probabilities.' },
-            { id: 'uniform', name: 'Uniform', displayName: 'Uniform (a, b)', description: 'Equal probability over range', details: 'A probability distribution that has constant probability. For example, a uniform distribution on [a,b] assigns equal probability to all values in that interval.' }
+
+            // Row 4: Uniform, Weibull, Burr
+            { id: 'uniform', name: 'Uniform', displayName: 'Uniform (a, b)', description: 'Equal probability over range', details: 'A probability distribution that has constant probability. For example, a uniform distribution on [a,b] assigns equal probability to all values in that interval.' },
+            { id: 'weibull', name: 'Weibull', displayName: 'Weibull (λ, k)', description: 'Lifetime data modeling', details: 'A continuous probability distribution used in reliability engineering and failure analysis to model the lifetime of materials and products, and also in extreme value theory.' },
+            { id: 'burr', name: 'Burr', displayName: 'Burr (c, k, λ)', description: 'Flexible heavy-tailed dist.', details: 'A family of continuous probability distributions that is often used to model income distributions and other heavy-tailed phenomena. It is a very flexible distribution that can take on a wide variety of shapes.' },
+            { id: 'negative_binomial', name: 'Negative Binomial', displayName: 'Negative Binomial (r, p)', description: 'Trials to r successes', details: 'The probability distribution of the number of Bernoulli trials needed to get r successes. It generalizes the Geometric distribution.' },
+
         ];
 
         const connections = [
-            { from: 'normal', to: 'standard_normal', type: 'standardization', label: 'Standardization (Z-score)' },
-            { from: 't_dist', to: 'normal', type: 'limit', label: 'Limit (df → ∞)' },
-            { from: 'chi_squared', to: 'normal', type: 'derivation', label: 'Sum of Squared Normals' },
-            { from: 'exponential', to: 'poisson', type: 'relation', label: 'Waiting Time' },
-            { from: 'binomial', to: 'normal', type: 'approximation', label: 'Normal Approximation (large n)' },
-            { from: 'binomial', to: 'poisson', type: 'approximation', label: 'Poisson Approximation (rare events)' },
-            { from: 'bernoulli', to: 'binomial', type: 'relation', label: 'Single Trial' },
-            { from: 'gamma', to: 'exponential', type: 'special_case', label: 'Special Case' },
-            { from: 'beta', to: 'uniform', type: 'special_case', label: 'Special Case' },
+            // Approximations
+            { from: 'binomial', to: 'poisson', type: 'approximation', label: 'Inf Trials & Shrinking Rate', formula: '$$\\text{If} \\ X \\sim \\text{Bin}(n, p) \\ \\text{then:} \\lim_{n \\to \\infty,\\ \\ p \\to \\frac{\\lambda}{n}} X \\sim \\text{Pois}(\\lambda)$$' },
+            { from: 'binomial', to: 'normal', type: 'approximation', label: 'Normal Approx.', formula: 'X ~ Bin(n, p)  -->  X ~ N(np, np(1-p))  for large n' },
+            
+            // Special Cases & Relations
+            { from: 'exponential', to: 'erlang', type: 'generalise', label: 'yoyoyo', formula: '$$\\text{If} \\ T \\sim \\text{Exp}(λ) \\ \\text{then:} \\sum_{i=1}^{k} T_i \\sim \\text{Erl}(k, \\lambda)$$' },
+            { from: 'erlang', to: 'gamma', type: 'generalise', label: 'Allow k to be non-integer', formula: 'Bin(1, p) = Bernoulli(p)' },
+            { from: 'bernoulli', to: 'binomial', type: 'relation', label: 'Multiple Trials', formula: 'Bin(1, p) = Bernoulli(p)' },
+            { from: 'geometric', to: 'negative_binomial', type: 'special_case', label: 'Special Case', formula: 'NB(1, p) = Geometric(p)' },
+            { from: 'exponential', to: 'gamma', type: 'special_case', label: 'Special Case', formula: 'Gamma(1, θ) = Exp(1/θ)' },
+            { from: 'chi_squared', to: 'gamma', type: 'special_case', label: 'Special Case', formula: 'Chi-squared(k) = Gamma(k/2, 2)' },
+            { from: 't_dist', to: 'normal', type: 'limit', label: 'Limit (df → ∞)', formula: 'X ~ t(df)  -->  X ~ N(0, 1)  as df→∞' }, // t_dist not in cards
+            { from: 'beta', to: 'uniform', type: 'special_case', label: 'Special Case', formula: 'Beta(1, 1) = Uniform(0, 1)' },
+            { from: 'lognormal', to: 'normal', type: 'transformation', label: 'Log Transform', formula: 'If Y ~ N(μ, σ²), then X = e^Y ~ Lognormal(μ, σ²)' },
+            
+            // Other useful connections (conceptual/derivational)
+            { from: 'normal', to: 'chi_squared', type: 'derivation', label: 'Sum of Squared Normals', formula: 'Sum of squares of k standard normals ~ Chi-squared(k)' },
+            { from: 'poisson', to: 'exponential', type: 'relation', label: 'Waiting Time', formula: 'Time between Poisson events is Exponential' },
+            // Added connections based on typical relationships
+            // { from: 'hypergeometric', to: 'binomial', type: 'approximation', label: 'Binomial Approx.', formula: 'Hypergeometric(N, K, n) ≈ Binomial(n, K/N) if n << N' },
+            { from: 'exponential', to: 'weibull', type: 'special_case', label: 'Special Case', formula: 'Weibull(λ, 1) = Exponential(λ)' },
+            { from: 'burr', to: 'pareto', type: 'special_case', label: 'Special Case (Type II)', formula: 'Burr(1, k, λ) related to Pareto Type II' }, // Note: Pareto not in list, this is conceptual
         ];
 
-        // Hardcoded positions for simplicity (no dragging)
-        const nodePositions = {
-            normal: { x: 300, y: 100 },
-            standard_normal: { x: 550, y: 100 },
-            t_dist: { x: 300, y: 250 },
-            chi_squared: { x: 550, y: 250 },
-            exponential: { x: 100, y: 400 },
-            poisson: { x: 300, y: 400 },
-            binomial: { x: 500, y: 400 },
-            bernoulli: { x: 700, y: 400 },
-            gamma: { x: 100, y: 550 },
-            beta: { x: 500, y: 550 },
-            uniform: { x: 700, y: 550 },
-        };
+        // Map to store card DOM elements by ID for easy lookup
+        const cardElements = {};
 
-        const cardsContainer = document.getElementById('distribution-cards-container');
-        const detailPanel = document.getElementById('detail-panel');
-        const closeDetailPanelBtn = document.getElementById('close-detail-panel-btn');
-        const detailPanelTitle = document.getElementById('detail-panel-title');
-        const detailPanelDescription = document.getElementById('detail-panel-description');
-        const detailPanelDetails = document.getElementById('detail-panel-details');
-        const detailPanelConnections = document.getElementById('detail-panel-connections');
-        const noConnectionsMessage = document.getElementById('no-connections-message');
-        const connectionsSvg = document.getElementById('connections-svg');
+        // Card layout parameters
+        const cardsPerRow = 4;
+        const cardWidth = 200; // from CSS
+        const cardHeight = 100; // from CSS
+        const horizontalSpacing = 400; // Distance between card centers horizontally (Increased)
+        const verticalSpacing = 400;   // Distance between card centers vertically (Increased)
+        const startX = 100; // Starting X position for the first card
+        const startY = 100; // Starting Y position for the first card
 
-        // Store references to created card elements for line drawing
-        const nodeElements = {};
-
-        // Function to create and append a distribution card
-        function createDistributionCard(dist) {
-            const card = document.createElement('div');
-            card.id = `card-${dist.id}`;
-            card.className = `
-                absolute bg-gray-700/70 backdrop-blur-sm
-                rounded-lg shadow-xl p-4 cursor-pointer
-                border-2 border-gray-600 hover:border-red-500 transition-all duration-200
-            `;
-            card.style.left = `${nodePositions[dist.id].x}px`;
-            card.style.top = `${nodePositions[dist.id].y}px`;
-            card.style.width = '200px';
-            card.style.minHeight = '100px';
-
-            // Star Icon SVG
-            const starIconSvg = `
-                <div class="absolute -top-3 -left-3 bg-red-600 rounded-full w-6 h-6 flex items-center justify-center shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-yellow-300" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.25l-6.18 3.25L7 14.14l-5-4.87 8.91-1.01L12 2z"/>
-                    </svg>
-                </div>
-            `;
-
-            card.innerHTML = `
-                ${starIconSvg}
-                <h3 class="text-lg font-bold text-red-300 mb-1">${dist.displayName}</h3>
-                <p class="text-sm text-gray-300">${dist.description}</p>
-            `;
-
-            card.addEventListener('click', () => openDetailPanel(dist));
-            cardsContainer.appendChild(card);
-            nodeElements[dist.id] = card; // Store reference to the actual DOM element
+        // Function to get the center coordinates of an element
+        function getElementCenter(element) {
+            const rect = element.getBoundingClientRect();
+            // Return center coordinates relative to the document
+            return {
+                x: rect.left + rect.width / 2 + window.scrollX,
+                y: rect.top + rect.height / 2 + window.scrollY
+            };
         }
 
-        // Function to calculate line coordinates
-        function getLineCoordinates(fromId, toId) {
-            const fromNode = nodeElements[fromId];
-            const toNode = nodeElements[toId];
+        // Helper function to find the point where a line from origin (cx, cy) to target (tx, ty)
+        // intersects the boundary of a given rectangle (rect).
+        function getPointOnRectBoundary(rect, cx, cy, tx, ty) {
+            const dx = tx - cx;
+            const dy = ty - cy;
+            const half_width = rect.width / 2;
+            const half_height = rect.height / 2;
+
+            let finalX, finalY;
+
+            if (dx === 0) { // Vertical line
+                finalX = cx;
+                finalY = cy + Math.sign(dy) * half_height;
+            } else if (dy === 0) { // Horizontal line
+                finalX = cx + Math.sign(dx) * half_width;
+                finalY = cy;
+            } else {
+                const absDx = Math.abs(dx);
+                const absDy = Math.abs(dy);
+
+                if (absDx * half_height > absDy * half_width) {
+                    // Line hits left or right side
+                    const t = half_width / absDx;
+                    finalX = cx + Math.sign(dx) * half_width;
+                    finalY = cy + t * dy;
+                } else {
+                    // Line hits top or bottom side
+                    const t = half_height / absDy;
+                    finalX = cx + t * dx;
+                    finalY = cy + Math.sign(dy) * half_height;
+                }
+            }
+            return { x: finalX, y: finalY };
+        }
+
+        // Function to draw a connection line and its text
+        function drawConnectionSegment(startCard, endCard, label, formula) {
+            const center1 = getElementCenter(startCard);
+            const center2 = getElementCenter(endCard);
             const svgRect = connectionsSvg.getBoundingClientRect();
 
-            if (fromNode && toNode) {
-                const fromRect = fromNode.getBoundingClientRect();
-                const toRect = toNode.getBoundingClientRect();
+            const rect1 = startCard.getBoundingClientRect();
+            const rect2 = endCard.getBoundingClientRect();
 
-                const startX = fromRect.left + fromRect.width / 2 - svgRect.left;
-                const startY = fromRect.top + fromRect.height / 2 - svgRect.top;
-                const endX = toRect.left + toRect.width / 2 - svgRect.left;
-                const endY = toRect.top + toRect.height / 2 - svgRect.top;
+            // Calculate intersection points with card boundaries
+            const startPointDoc = getPointOnRectBoundary(rect1, center1.x, center1.y, center2.x, center2.y);
+            const endPointDoc = getPointOnRectBoundary(rect2, center2.x, center2.y, center1.x, center1.y);
 
-                return { x1: startX, y1: startY, x2: endX, y2: endY };
-            }
-            return { x1: 0, y1: 0, x2: 0, y2: 0 };
+            // Convert to SVG coordinates (relative to SVG container)
+            const x1Svg = startPointDoc.x - svgRect.left;
+            const y1Svg = startPointDoc.y - svgRect.top;
+            const x2Svg = endPointDoc.x - svgRect.left;
+            const y2Svg = endPointDoc.y - svgRect.top;
+
+            // Create SVG group for the connection
+            const connectionGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            connectionGroup.classList.add('connection-group');
+
+            // Create invisible hit area line
+            const hitareaLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            hitareaLine.classList.add('connection-line-hitarea');
+            hitareaLine.setAttribute('x1', x1Svg);
+            hitareaLine.setAttribute('y1', y1Svg);
+            hitareaLine.setAttribute('x2', x2Svg);
+            hitareaLine.setAttribute('y2', y2Svg);
+            connectionGroup.appendChild(hitareaLine);
+
+            // Create visible dashed line with arrow at the end
+            const visibleLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            visibleLine.classList.add('connection-line-visible');
+            visibleLine.setAttribute('x1', x1Svg);
+            visibleLine.setAttribute('y1', y1Svg);
+            visibleLine.setAttribute('x2', x2Svg);
+            visibleLine.setAttribute('y2', y2Svg);
+            visibleLine.setAttribute('marker-end', 'url(#arrowhead-end)');
+            connectionGroup.appendChild(visibleLine);
+
+            // Create text element for the label
+            const textElement = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            textElement.classList.add('arrow-text');
+            textElement.textContent = label;
+
+            // Position the static text horizontally above the line
+            const midX = (x1Svg + x2Svg) / 2;
+            const midY = (y1Svg + y2Svg) / 2;
+            const textOffset = 15; // Fixed vertical offset for horizontal text
+
+            textElement.setAttribute('x', midX);
+            textElement.setAttribute('y', midY - textOffset);
+            textElement.setAttribute('transform', `rotate(0 ${textElement.getAttribute('x')} ${textElement.getAttribute('y')})`);
+            connectionGroup.appendChild(textElement);
+
+            connectionsSvg.appendChild(connectionGroup);
+
+            // Add event listeners for tooltip
+            hitareaLine.addEventListener('mouseover', (event) => showTooltip(event, label, formula));
+            hitareaLine.addEventListener('mousemove', moveTooltip);
+            hitareaLine.addEventListener('mouseout', hideTooltip);
         }
 
-        // Function to draw connections (lines)
-        function drawConnections() {
-            connectionsSvg.innerHTML = ''; // Clear existing lines
+        // Function to draw all connections
+        function drawAllConnections() {
+            // Clear existing connections before redrawing
+            connectionsSvg.querySelectorAll('.connection-group').forEach(group => group.remove());
+
             connections.forEach(conn => {
-                const { x1, y1, x2, y2 } = getLineCoordinates(conn.from, conn.to);
-                if (x1 === 0 && y1 === 0 && x2 === 0 && y2 === 0) return; // Skip if nodes not found
-
-                // Draw line
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1);
-                line.setAttribute('y1', y1);
-                line.setAttribute('x2', x2);
-                line.setAttribute('y2', y2);
-                line.setAttribute('class', 'stroke-red-500 stroke-[3px] opacity-75 transition-all duration-300 ease-out');
-                line.setAttribute('stroke-dasharray', '5,5');
-                connectionsSvg.appendChild(line);
-
-                // Add text label
-                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-                text.setAttribute('x', (x1 + x2) / 2);
-                text.setAttribute('y', (y1 + y2) / 2 - 10);
-                text.setAttribute('text-anchor', 'middle');
-                text.setAttribute('class', 'line-label'); // Use custom class for styling
-                text.textContent = conn.label;
-                connectionsSvg.appendChild(text);
+                const fromCard = cardElements[conn.from];
+                const toCard = cardElements[conn.to];
+                if (fromCard && toCard) {
+                    drawConnectionSegment(fromCard, toCard, conn.label, conn.formula);
+                }
             });
         }
 
-        // Function to open the detail panel
-        function openDetailPanel(dist) {
-            detailPanelTitle.textContent = dist.displayName;
-            detailPanelDescription.textContent = dist.description;
-            detailPanelDetails.textContent = dist.details;
+        // --- Tooltip functions ---
+        function showTooltip(event, label, formula) {
+            const tooltipContent = `
+                <div class="font-bold text-base">${label}</div>
+                <div class="text-xs mt-1">${formula}</div>
+            `;
+            testTooltip.innerHTML = tooltipContent; // Set the raw LaTeX string
+            testTooltip.classList.add('active'); // Activate display:block
 
-            // Clear previous connections
-            detailPanelConnections.innerHTML = '';
-            const related = connections.filter(conn => conn.from === dist.id || conn.to === dist.id);
-
-            if (related.length > 0) {
-                noConnectionsMessage.classList.add('hidden');
-                related.forEach(conn => {
-                    const listItem = document.createElement('li');
-                    const otherDistId = conn.from === dist.id ? conn.to : conn.from;
-                    const otherDist = distributions.find(d => d.id === otherDistId);
-                    if (otherDist) {
-                        listItem.innerHTML = `
-                            ${conn.from === dist.id ? 'Connects to' : 'Connects from'}
-                            <span class="font-medium text-red-400">${otherDist.displayName}</span> via:
-                            <span class="font-medium text-red-400">${conn.label}</span>
-                        `;
-                        detailPanelConnections.appendChild(listItem);
-                    }
-                });
+            // Tell MathJax to process the new content
+            if (window.MathJax) {
+                // Ensure MathJax is ready before trying to typeset
+                MathJax.typesetPromise([testTooltip]).then(() => {
+                    moveTooltip(event); // Position after rendering is complete
+                }).catch((err) => console.error('MathJax typesetting error:', err));
             } else {
-                noConnectionsMessage.classList.remove('hidden');
+                moveTooltip(event); // Fallback positioning if MathJax not loaded
             }
-
-            detailPanel.classList.remove('closed');
-            detailPanel.classList.add('open');
         }
 
-        // Function to close the detail panel
-        function closeDetailPanel() {
-            detailPanel.classList.remove('open');
-            detailPanel.classList.add('closed');
+        function moveTooltip(event) {
+            const clientX = event.clientX;
+            const clientY = event.clientY;
+
+            const offsetX = 15;
+            const offsetY = 15;
+
+            testTooltip.style.left = `${clientX + offsetX}px`;
+            testTooltip.style.top = `${clientY + offsetY}px`;
+
+            const tooltipRect = testTooltip.getBoundingClientRect();
+            if (tooltipRect.right > window.innerWidth) {
+                testTooltip.style.left = `${clientX - tooltipRect.width - offsetX}px`;
+            }
+            if (tooltipRect.bottom > window.innerHeight) {
+                testTooltip.style.top = `${clientY - tooltipRect.height - offsetY}px`;
+            }
         }
 
-        // Event listener for closing the detail panel
-        closeDetailPanelBtn.addEventListener('click', closeDetailPanel);
+        function hideTooltip() {
+            testTooltip.classList.remove('active'); // Deactivate display:block
+        }
 
-        // Initialize board on window load
-        window.onload = function() {
-            // Create all cards
-            distributions.forEach(createDistributionCard);
-            // Draw connections after cards are rendered
-            drawConnections();
-        };
+        // --- Side Panel functions ---
+        function openSidePanel(distribution) {
+            sidePanel.classList.add('open');
+            panelTitle.textContent = distribution.displayName + ' Details';
+            panelContent.innerHTML = `<p>${distribution.details}</p>`;
+        }
 
-        // Redraw connections on window resize
-        window.addEventListener('resize', drawConnections);
+        function closeSidePanel() {
+            sidePanel.classList.remove('open');
+        }
+
+        // Event listener for the close button in the side panel
+        closePanelButton.addEventListener('click', (event) => {
+            event.stopPropagation();
+            closeSidePanel();
+        });
+
+        // Event listener to close the side panel when clicking outside of it or the cards
+        document.addEventListener('click', (event) => {
+            const isClickInsideSidePanel = sidePanel.contains(event.target);
+            const isClickOnCard = event.target.closest('.card'); // Check if click is on any card
+
+            if (!isClickInsideSidePanel && !isClickOnCard && sidePanel.classList.contains('open')) {
+                closeSidePanel();
+            }
+        });
+
+        // Function to initialize the application
+        function initApp() {
+            // Clear existing cards
+            cardContainer.innerHTML = '';
+            let maxX = 0;
+            let maxY = 0;
+
+            distributions.forEach((dist, index) => {
+                const card = document.createElement('div');
+                card.id = dist.id;
+                card.classList.add('card');
+
+                // Calculate position based on grid
+                const row = Math.floor(index / cardsPerRow);
+                const col = index % cardsPerRow;
+                const cardX = startX + col * horizontalSpacing;
+                const cardY = startY + row * verticalSpacing;
+
+                card.style.left = `${cardX}px`;
+                card.style.top = `${cardY}px`;
+
+                card.innerHTML = `
+                    <h3 class="font-bold text-lg">${dist.displayName}</h3>
+                    <p class="text-sm">${dist.description}</p>
+                `;
+                card.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    openSidePanel(dist);
+                });
+                cardContainer.appendChild(card);
+                cardElements[dist.id] = card; // Store reference to the DOM element
+
+                // Update max dimensions for container and SVG
+                maxX = Math.max(maxX, cardX + cardWidth);
+                maxY = Math.max(maxY, cardY + cardHeight);
+            });
+
+            // Set dynamic width and height for card-container and connections-svg
+            cardContainer.style.minWidth = `${maxX + startX}px`; // Add some padding
+            cardContainer.style.minHeight = `${maxY + startY}px`; // Add some padding
+            connectionsSvg.style.width = `${maxX + startX}px`;
+            connectionsSvg.style.height = `${maxY + startY}px`;
+
+
+            // Draw connections after all cards are rendered
+            drawAllConnections();
+        }
+
+        // Initial draw and redraw on resize
+        window.onload = initApp;
+        window.addEventListener('resize', drawAllConnections);
     </script>
 </body>
 </html>
