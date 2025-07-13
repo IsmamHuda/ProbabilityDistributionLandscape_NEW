@@ -205,69 +205,100 @@
         const panelTitle = document.getElementById('panel-title');
         const panelContent = document.getElementById('panel-content');
 
+        // Each distribution now includes 'x' and 'y' coordinates for its position on a conceptual grid.
+        // These coordinates will be multiplied by spacing units to get pixel positions.
         const distributions = [
-            // Row 1: Bernoulli, Binomial, Geometric, Negative Binomial
-            { id: 'bernoulli', name: 'Bernoulli', displayName: 'Bernoulli (p)', description: 'Single trial, binary outcome', details: 'The probability distribution of a random variable which takes the value 1 with probability p and the value 0 with probability q=1-p. It models a single trial with two outcomes.' },
-            { id: 'binomial', name: 'Binomial', displayName: 'Binomial (n, p)', description: 'Successes in N trials', details: 'A discrete probability distribution of the number of successes in a sequence of n independent experiments, each asking a yes/no question, and each with its own Boolean-valued outcome: success (with probability p) or failure (with probability q = 1 − p).' },
-            { id: 'poisson', name: 'Poisson', displayName: 'Poisson (λ)', description: 'Count of events', details: 'A discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time or space if these events occur with a known constant mean rate and independently of the time since the last event.' },
-            { id: 'hypergeometric', name: 'Hypergeometric', displayName: 'Hypergeometric (N, K, n)', description: 'Sampling without replacement', details: 'A discrete probability distribution that describes the probability of drawing a certain number of successes in a fixed number of draws, without replacement, from a finite population with a known number of successes.' },
 
-            // Row 2: Hypergeometric, Poisson, Exponential, Gamma
-            { id: 'geometric', name: 'Geometric', displayName: 'Geometric (p)', description: 'Trials to first success', details: 'The probability distribution of the number of Bernoulli trials needed to get one success, supported on the set {1, 2, 3, ...}.' },
-            { id: 'normal', name: 'Normal', displayName: 'Normal (μ, σ)', description: 'The bell curve', details: 'A continuous probability distribution that is symmetric about its mean, with data clustering around the mean and tapering off symmetrically away from it. Many natural phenomena are approximately normally distributed.' },
-            { id: 'erlang', name: 'Erlang', displayName: 'Erlang (k, λ)', description: 'Waiting time for kth event', details: 'The time until the kth event. Also equivalent to the sum of k iid exponentials, owing to the memoryless property of the exponential distribution' },
-            { id: 'exponential', name: 'Exponential', displayName: 'Exponential (λ)', description: 'Waiting time between events', details: 'A continuous probability distribution that describes the time between events in a Poisson point process, i.e., a process in which events occur continuously and independently at a constant average rate.' },
-            { id: 'gamma', name: 'Gamma', displayName: 'Gamma (k, θ) or (α, β)', description: 'Generalization of Exponential', details: 'A two-parameter family of continuous probability distributions. It has a skewed shape and is often used to model waiting times until multiple events occur.' },
-            
-            // Row 3: Chi-squared, Normal, Log Normal, Beta
-            { id: 'chi_squared', name: 'Chi-squared', displayName: 'Chi-squared (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.' },
-            { id: 'lognormal', name: 'Log Normal', displayName: 'Log Normal (μ, σ)', description: 'Logarithm is normally distributed', details: 'A continuous probability distribution of a random variable whose logarithm is normally distributed. Used to model phenomena such as income distribution, asset prices, and biological measurements where effects are multiplicative rather than additive.' },
-            { id: 'beta', name: 'Beta', displayName: 'Beta (α, β)', description: 'Probability of a probability', details: 'A family of continuous probability distributions defined on the interval [0, 1]. It is often used to model the behavior of random variables restricted to intervals of finite length, such as probabilities.' },
+            // Row 1: Geometric, Negative Binomial, Hypergeometric, Frechet, Weibull
+            { id: 'geometric', name: 'Geometric', displayName: 'Geometric (p)', description: 'Trials to first success', details: 'The probability distribution of the number of Bernoulli trials needed to get one success, supported on the set {1, 2, 3, ...}.', x: 1.5, y: 1.5 },
+            { id: 'negative_binomial', name: 'Negative Binomial', displayName: 'Negative Binomial (k, p)', description: 'Trials to k successes', details: 'The probability distribution of the number of Bernoulli trials needed to get r successes. It generalizes the Geometric distribution.', x: 1, y: 1 },
+            { id: 'hypergeometric', name: 'Hypergeometric', displayName: 'Hypergeometric (N, K, n)', description: 'Sampling without replacement', details: 'A discrete probability distribution that describes the probability of drawing a certain number (k) of successes in a fixed number of draws (n), without replacement, from a finite population (N) with a known number of successes (K).', x: 2, y: 1 },            
+            { id: 'frechet', name: 'Frechet', displayName: 'Frechet (α, s)', description: 'Sampling without replacement', details: 'A discrete probability distribution that describes the probability of drawing a certain number (k) of successes in a fixed number of draws (n), without replacement, from a finite population (N) with a known number of successes (K).', x: 3, y: 1 },
+            { id: 'weibull', name: 'Weibull', displayName: 'Weibull (λ, k)', description: 'Failure rate changes with time', details: 'A continuous probability distribution used in reliability engineering and failure analysis to model the lifetime of materials and products, and also in extreme value theory.', x: 3, y: 1.5 },
+            { id: 'gumbel', name: 'Gumbel', displayName: 'Gumbel (μ, β)', description: 'Failure rate changes with time', details: 'A continuous probability distribution used in reliability engineering and failure analysis to model the lifetime of materials and products, and also in extreme value theory.', x: 4, y: 1.5 },
+            { id: 'extreme_val', name: 'Extreme_Val', displayName: 'Generalised Extreme Value (μ, σ, ξ)', description: 'Failure rate changes with time', details: 'A continuous probability distribution used in reliability engineering and failure analysis to model the lifetime of materials and products, and also in extreme value theory.', x: 4, y: 1 },
 
-            // Row 4: Uniform, Weibull, Burr
-            { id: 'uniform', name: 'Uniform', displayName: 'Uniform (a, b)', description: 'Equal probability over range', details: 'A probability distribution that has constant probability. For example, a uniform distribution on [a,b] assigns equal probability to all values in that interval.' },
-            { id: 'weibull', name: 'Weibull', displayName: 'Weibull (λ, k)', description: 'Lifetime data modeling', details: 'A continuous probability distribution used in reliability engineering and failure analysis to model the lifetime of materials and products, and also in extreme value theory.' },
-            { id: 'burr', name: 'Burr', displayName: 'Burr (c, k, λ)', description: 'Flexible heavy-tailed dist.', details: 'A family of continuous probability distributions that is often used to model income distributions and other heavy-tailed phenomena. It is a very flexible distribution that can take on a wide variety of shapes.' },
-            { id: 'negative_binomial', name: 'Negative Binomial', displayName: 'Negative Binomial (r, p)', description: 'Trials to r successes', details: 'The probability distribution of the number of Bernoulli trials needed to get r successes. It generalizes the Geometric distribution.' },
+            // Row 2: Bernoulli, Binomial, Poisson, Exponential
+            { id: 'exponential', name: 'Exponential', displayName: 'Exponential (λ)', description: 'Waiting time between events', details: 'A continuous probability distribution that describes the time between events in a Poisson point process, i.e., a process in which events occur continuously and independently at a constant average rate.', x: 4, y: 2 },
+            { id: 'bernoulli', name: 'Bernoulli', displayName: 'Bernoulli (p)', description: 'Single trial, binary outcome', details: 'The probability distribution of a random variable which takes the value 1 with probability p and the value 0 with probability q=1-p. It models a single trial with two outcomes.', x: 1, y: 2 }, // Example: Bernoulli moved to column 3
+            { id: 'binomial', name: 'Binomial', displayName: 'Binomial (n, p)', description: 'Successes in N trials', details: 'A discrete probability distribution of the number of successes in a sequence of n independent experiments, each asking a yes/no question, and each with its own Boolean-valued outcome: success (with probability p) or failure (with probability q = 1 − p).', x: 2, y: 2 },
+            { id: 'poisson', name: 'Poisson', displayName: 'Poisson (λ)', description: 'Count of events', details: 'A discrete probability distribution that expresses the probability of a given number of events occurring in a fixed interval of time or space if these events occur with a known constant mean rate and independently of the time since the last event.', x: 3, y: 2 },
 
+
+            // Row 3: LognormalGeometric, Normal, Erlang, Exponential, Gamma
+            { id: 'lognormal', name: 'Log Normal', displayName: 'Log Normal (μ, σ)', description: 'Logarithm is normally distributed', details: 'A continuous probability distribution of a random variable whose logarithm is normally distributed. Used to model phenomena such as income distribution, asset prices, and biological measurements where effects are multiplicative rather than additive.', x: 1, y: 3 },
+            { id: 'normal', name: 'Normal', displayName: 'Normal (μ, σ)', description: 'The bell curve', details: 'A continuous probability distribution that is symmetric about its mean, with data clustering around the mean and tapering off symmetrically away from it. Many natural phenomena are approximately normally distributed.', x: 2, y: 3 },
+            { id: 'gamma', name: 'Gamma', displayName: 'Gamma (k, θ) or (α, β)', description: 'Generalization of Exponential', details: 'A two-parameter family of continuous probability distributions. It has a skewed shape and is often used to model waiting times until multiple events occur.', x: 3, y: 3 },
+            { id: 'erlang', name: 'Erlang', displayName: 'Erlang (k, λ)', description: 'Waiting time for kth event', details: 'The time until the kth event. Also equivalent to the sum of k iid exponentials, owing to the memoryless property of the exponential distribution', x: 4, y: 3 },
+
+            // Row 4: Chi-squared, Log Normal, Beta
+            { id: 'cauchy', name: 'Cauchy', displayName: 'Cauchy (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.', x: 1, y: 4 },
+            { id: 'student t', name: 'Student t', displayName: 'Student t (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.', x: 2, y: 4 },
+            { id: 'chi_squared', name: 'Chi-squared', displayName: 'Chi-squared (k)', description: 'Sum of squared normals', details: 'A non-negative, continuous probability distribution that arises in statistics, for example, in chi-squared tests of goodness of fit or independence.', x: 3, y: 4 },
+            { id: 'beta', name: 'Beta', displayName: 'Beta (α, β)', description: 'Probability of a probability', details: 'A family of continuous probability distributions defined on the interval [0, 1]. It is often used to model the behavior of random variables restricted to intervals of finite length, such as probabilities.', x: 4, y: 4 },
+
+            // Row 5: Uniform, Weibull, Burr, Negative Binomial
+            { id: 'pareto', name: 'Pareto', displayName: 'Pareto (c, k, λ)', description: 'Flexible heavy-tailed dist.', details: 'A family of continuous probability distributions that is often used to model income distributions and other heavy-tailed phenomena. It is a very flexible distribution that can take on a wide variety of shapes.', x: 1, y: 5 },
+            { id: 'burr', name: 'Burr', displayName: 'Burr (c, k, λ)', description: 'Flexible heavy-tailed dist.', details: 'A family of continuous probability distributions that is often used to model income distributions and other heavy-tailed phenomena. It is a very flexible distribution that can take on a wide variety of shapes.', x: 2, y: 5 },
+            { id: 'uniform', name: 'Uniform', displayName: 'Uniform (a, b)', description: 'Equal probability over range', details: 'A probability distribution that has constant probability. For example, a uniform distribution on [a,b] assigns equal probability to all values in that interval.', x: 4, y: 5 }
+
+
+
+
+            // Row 6: Uniform, Weibull, Burr, Negative Binomial
         ];
 
         const connections = [
-            // Approximations
-            { from: 'binomial', to: 'poisson', type: 'approximation', label: 'Inf Trials & Shrinking Rate', formula: '$$\\text{If} \\ X \\sim \\text{Bin}(n, p) \\ \\text{then:} \\lim_{n \\to \\infty,\\ \\ p \\to \\frac{\\lambda}{n}} X \\sim \\text{Pois}(\\lambda)$$' },
+
+            { from: 'bernoulli', to: 'geometric', type: 'transform', label: 'First Success', formula: '$$\\text{If} \\ X_i \\sim \\text{i.i.d Bern}(p) \\ \\text{for} \\ i \\in \\mathbb{N} \\ \\text{then} \\min \\{ i : \\ X_i = 1 \\} \\sim \\text{NegBin}(n, p)$$' },
+            { from: 'geometric', to: 'negative_binomial', type: 'generalise', label: 'Sum RVs', formula: '$$\\text{If} \\ X_i \\sim \\text{i.i.d Geom}(p) \\ \\text{then} \\sum_{i=1}^{n} X_i \\sim \\text{NegBin}(n, p)$$' },
+            { from: 'bernoulli', to: 'negative_binomial', type: 'generalise', label: 'kth Success', formula: '$$\\text{If} \\ X_i \\sim \\text{i.i.d Bern}(p) \\ \\text{for} \\ i \\in \\mathbb{N} \\ \\text{then} \\min \\{ i : \\ \\sum_{i} X_i = k \\} \\sim \\text{NegBin}(k, p)$$' },
+
+            { from: 'binomial', to: 'hypergeometric', type: 'approximation', label: 'Without Replacement', formula: '' },
+            { from: 'binomial', to: 'poisson', type: 'approximation', label: 'Inf Trials', formula: '$$\\text{If} \\ X \\sim \\text{Bin}(n, \\frac{λ}{n}) \\ \\ \\text{then} \\lim_{n \\to \\infty} X \\sim \\text{Pois}(λ)$$' },
             { from: 'binomial', to: 'normal', type: 'approximation', label: 'Normal Approx.', formula: 'X ~ Bin(n, p)  -->  X ~ N(np, np(1-p))  for large n' },
+
+            { from: 'poisson', to: 'exponential', type: 'relation', label: 'Waiting Time', formula: '$$\\text{If} \\ X_t \\sim \\text{Pois}(λ t) \\ \\text{then} \\min \\{ t : \\ X_t = 1 \\} \\sim \\text{Exp}(λ)$$' },
+            { from: 'exponential', to: 'weibull', type: 'generalise', label: 'Generalise', formula: 'Weibull(λ, 1) = Exponential(λ)' },
+            { from: 'weibull', to: 'frechet', type: 'transform', label: 'Inverse', formula: '$$\\text{If} \\ X \\sim \\text{Weib}(λ,k) \\ \\text{then} \\frac{1}{X} \\sim \\text{Frechet}(λ^{-1},k)$$' },
+            { from: 'weibull', to: 'extreme_val', type: 'generalise', label: 'Generalise', formula: '$$\\text{If} \\ X \\sim \\text{GEV}(μ,σ,0) \\ \\text{then} \\ 1 + \\frac{ξ}{σ}(X - μ) \\sim \\text{Weib}(1,α) $$' },
+            { from: 'frechet', to: 'extreme_val', type: 'generalise', label: 'Generalise', formula: '$$\\text{For} \\ ξ>0 \\ \\text{GEV}(μ,σ,ξ) \\overset{d}{=} \\text{Frechet}(\\frac{1}{ξ}, 1) $$' },
+            { from: 'gumbel', to: 'extreme_val', type: 'generalise', label: 'Generalise', formula: '$$\\text{For} \\ ξ=0 \\ \\text{GEV}(μ,σ,ξ) \\overset{d}{=} \\text{Gumbel}(μ,σ) $$' },
             
+
+
+
             // Special Cases & Relations
-            { from: 'exponential', to: 'erlang', type: 'generalise', label: 'yoyoyo', formula: '$$\\text{If} \\ T \\sim \\text{Exp}(λ) \\ \\text{then:} \\sum_{i=1}^{k} T_i \\sim \\text{Erl}(k, \\lambda)$$' },
-            { from: 'erlang', to: 'gamma', type: 'generalise', label: 'Allow k to be non-integer', formula: 'Bin(1, p) = Bernoulli(p)' },
-            { from: 'bernoulli', to: 'binomial', type: 'relation', label: 'Multiple Trials', formula: 'Bin(1, p) = Bernoulli(p)' },
-            { from: 'geometric', to: 'negative_binomial', type: 'special_case', label: 'Special Case', formula: 'NB(1, p) = Geometric(p)' },
-            { from: 'exponential', to: 'gamma', type: 'special_case', label: 'Special Case', formula: 'Gamma(1, θ) = Exp(1/θ)' },
+            { from: 'exponential', to: 'erlang', type: 'generalise', label: 'Sum of Exp. R.V.s', formula: '$$\\text{If} \\ T \\sim \\text{Exp}(λ) \\ \\text{then:} \\sum_{i=1}^{k} T_i \\sim \\text{Erl}(k, λ)$$' },
+            { from: 'erlang', to: 'gamma', type: 'generalise', label: 'Allow k to be non-integer', formula: '$$\\text{Erlang}(k, λ) \\overset{d}{=} Gamma(k, 1/λ)$$' },
+            { from: 'bernoulli', to: 'binomial', type: 'relation', label: 'Multiple Trials', formula: '$$\\text{If} \\ X_i \\sim \\text{i.i.d. Bern}(p) \\ \\ \\text{then} \\sum_{i=1}^{n} X_i \\sim \\text{Bin}(n,p)$$' },
             { from: 'chi_squared', to: 'gamma', type: 'special_case', label: 'Special Case', formula: 'Chi-squared(k) = Gamma(k/2, 2)' },
-            { from: 't_dist', to: 'normal', type: 'limit', label: 'Limit (df → ∞)', formula: 'X ~ t(df)  -->  X ~ N(0, 1)  as df→∞' }, // t_dist not in cards
+            // { from: 't_dist', to: 'normal', type: 'limit', label: 'Limit (df → ∞)', formula: 'X ~ t(df)  -->  X ~ N(0, 1)  as df→∞' }, // t_dist not in cards
             { from: 'beta', to: 'uniform', type: 'special_case', label: 'Special Case', formula: 'Beta(1, 1) = Uniform(0, 1)' },
             { from: 'lognormal', to: 'normal', type: 'transformation', label: 'Log Transform', formula: 'If Y ~ N(μ, σ²), then X = e^Y ~ Lognormal(μ, σ²)' },
             
             // Other useful connections (conceptual/derivational)
             { from: 'normal', to: 'chi_squared', type: 'derivation', label: 'Sum of Squared Normals', formula: 'Sum of squares of k standard normals ~ Chi-squared(k)' },
-            { from: 'poisson', to: 'exponential', type: 'relation', label: 'Waiting Time', formula: 'Time between Poisson events is Exponential' },
             // Added connections based on typical relationships
             // { from: 'hypergeometric', to: 'binomial', type: 'approximation', label: 'Binomial Approx.', formula: 'Hypergeometric(N, K, n) ≈ Binomial(n, K/N) if n << N' },
-            { from: 'exponential', to: 'weibull', type: 'special_case', label: 'Special Case', formula: 'Weibull(λ, 1) = Exponential(λ)' },
-            { from: 'burr', to: 'pareto', type: 'special_case', label: 'Special Case (Type II)', formula: 'Burr(1, k, λ) related to Pareto Type II' }, // Note: Pareto not in list, this is conceptual
+            { from: 'burr', to: 'pareto', type: 'special_case', label: 'Special Case (Type II)', formula: 'Burr(1, k, λ) related to Pareto Type II' } // Note: Pareto not in list, this is conceptual
         ];
 
         // Map to store card DOM elements by ID for easy lookup
         const cardElements = {};
 
-        // Card layout parameters
-        const cardsPerRow = 4;
-        const cardWidth = 200; // from CSS
+        // Card layout parameters - these now act as multipliers for x,y coordinates
+        const cardWidth = 180; // from CSS
         const cardHeight = 100; // from CSS
-        const horizontalSpacing = 400; // Distance between card centers horizontally (Increased)
-        const verticalSpacing = 400;   // Distance between card centers vertically (Increased)
-        const startX = 100; // Starting X position for the first card
-        const startY = 100; // Starting Y position for the first card
+        // These define the spacing between the center of cards for each unit of x or y.
+        const horizontalSpacingUnit = 400; // Distance per unit in x-direction (e.g., per column)
+        const verticalSpacingUnit = 400;   // Distance per unit in y-direction (e.g., per row)
+        const paddingX = 50; // Initial padding from the left edge of the container
+        const paddingY = 50; // Initial padding from the top edge of the container
+
+        // Offset for dodging lines
+        const dodgeOffset = 10; // Pixels to offset parallel lines
+
 
         // Function to get the center coordinates of an element
         function getElementCenter(element) {
@@ -324,8 +355,25 @@
             const rect2 = endCard.getBoundingClientRect();
 
             // Calculate intersection points with card boundaries
-            const startPointDoc = getPointOnRectBoundary(rect1, center1.x, center1.y, center2.x, center2.y);
-            const endPointDoc = getPointOnRectBoundary(rect2, center2.x, center2.y, center1.x, center1.y);
+            let startPointDoc = getPointOnRectBoundary(rect1, center1.x, center1.y, center2.x, center2.y);
+            let endPointDoc = getPointOnRectBoundary(rect2, center2.x, center2.y, center1.x, center1.y);
+
+            // Check for reciprocal connection to apply dodging
+            const reciprocalConnectionExists = connections.some(c =>
+                (c.from === endCard.id && c.to === startCard.id)
+            );
+
+            if (reciprocalConnectionExists) {
+                const angle = Math.atan2(endPointDoc.y - startPointDoc.y, endPointDoc.x - startPointDoc.x);
+                const offsetX = dodgeOffset * Math.sin(angle);
+                const offsetY = -dodgeOffset * Math.cos(angle);
+
+                startPointDoc.x += offsetX;
+                startPointDoc.y += offsetY;
+                endPointDoc.x += offsetX;
+                endPointDoc.y += offsetY;
+            }
+
 
             // Convert to SVG coordinates (relative to SVG container)
             const x1Svg = startPointDoc.x - svgRect.left;
@@ -470,16 +518,16 @@
             let maxX = 0;
             let maxY = 0;
 
-            distributions.forEach((dist, index) => {
+            distributions.forEach((dist) => {
                 const card = document.createElement('div');
                 card.id = dist.id;
                 card.classList.add('card');
 
-                // Calculate position based on grid
-                const row = Math.floor(index / cardsPerRow);
-                const col = index % cardsPerRow;
-                const cardX = startX + col * horizontalSpacing;
-                const cardY = startY + row * verticalSpacing;
+                // Calculate position using explicit x, y coordinates from the distribution object.
+                // (dist.x - 1) and (dist.y - 1) are used because a coordinate of 1 should
+                // correspond to the initial padding, not padding + 1 unit spacing.
+                const cardX = paddingX + (dist.x - 1) * horizontalSpacingUnit;
+                const cardY = paddingY + (dist.y - 1) * verticalSpacingUnit;
 
                 card.style.left = `${cardX}px`;
                 card.style.top = `${cardY}px`;
@@ -501,10 +549,11 @@
             });
 
             // Set dynamic width and height for card-container and connections-svg
-            cardContainer.style.minWidth = `${maxX + startX}px`; // Add some padding
-            cardContainer.style.minHeight = `${maxY + startY}px`; // Add some padding
-            connectionsSvg.style.width = `${maxX + startX}px`;
-            connectionsSvg.style.height = `${maxY + startY}px`;
+            // Add padding to the max calculated dimensions to ensure content fits.
+            cardContainer.style.minWidth = `${maxX + paddingX}px`;
+            cardContainer.style.minHeight = `${maxY + paddingY}px`;
+            connectionsSvg.style.width = `${maxX + paddingX}px`;
+            connectionsSvg.style.height = `${maxY + paddingY}px`;
 
 
             // Draw connections after all cards are rendered
